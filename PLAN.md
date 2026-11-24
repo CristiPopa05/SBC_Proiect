@@ -20,7 +20,7 @@ Descarcă arhivele ZIP de pe Kaggle în subfolderele de mai jos. Scriptul de pre
 2. `scripts/prepare_data.py` pregătește structura YOLO Detection sub `dataset/detection/`, cu `images/`, `labels/` și `data.yaml`. Păstrăm împărțirile de antrenare, validare și test furnizate de sursă, dacă există. [Formatul Ultralytics YOLO Detection](https://docs.ultralytics.com/datasets/detect/)
 3. `scripts/train_model.py` pornește de la `yolov8n.pt`, folosește MPS dacă este disponibil și salvează detectorul în `models/best.pt`. Validăm localizarea și clasele pe imagini din setul de test și rulăm predicția pe un clip de drum, inclusiv pe cadre cu semne la margini și mai multe semne în același cadru.
 4. Verificăm acoperirea claselor. Pentru tipurile care lipsesc, avem nevoie de cadre în care acele semne sunt adnotate. Dacă folosim un detector generic pentru localizare, putem antrena separat un clasificator pe setul german și îl rulăm pe decupajele generate automat de detector. Folosim adnotările `road_sign` din setul de segmentare pentru a evalua localizarea separat de identificarea tipului.
-5. După ce detectorul funcționează pe video, continuăm pe `feature/live-dashboard` cu fluxul OpenCV și afișarea detecțiilor în `app.py`, apoi cu istoricul din `database/db_manager.py` în `traffic_logs.db`.
+5. Pe `feature/live-dashboard`, `app.py` preia camera prin WebRTC și afișează în Streamlit detecțiile modelului pe tot cadrul. Istoricul va fi gestionat de `database/db_manager.py` în `traffic_logs.db`.
 
 ## Rulare locală
 
@@ -34,3 +34,13 @@ venv/bin/python scripts/train_model.py --epochs 5 --imgsz 416 --batch 16
 ```
 
 Setul pregătit are 3.439 de imagini pentru antrenare, 791 pentru validare și 638 pentru test. Arhiva are 4.969 de imagini, iar pregătirea exclude 101 fișiere identice cu imagini din alte seturi. După pregătirea datelor, poți rula din nou direct `train_model.py`. Scriptul salvează cel mai bun model al rulării în `models/best.pt`, iar Ultralytics păstrează rezultatele fiecărei rulări în `runs/detect/`.
+
+### Cameră live
+
+Cu `models/best.pt` pregătit și dependențele instalate, pornește aplicația local.
+
+```sh
+venv/bin/streamlit run app.py --server.address 127.0.0.1 --browser.gatherUsageStats false
+```
+
+Deschide [dashboard-ul](http://127.0.0.1:8501), apasă **Pornește camera** și acordă accesul în browser. Cadrele sunt procesate pe Mac. Poți regla pragul de încredere în timpul testului.
