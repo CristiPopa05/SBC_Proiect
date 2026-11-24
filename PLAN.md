@@ -6,7 +6,7 @@ Camera MacBook-ului simulează o cameră orientată spre drum. Modelul analizeaz
 
 ## Date
 
-Descarcă arhivele de pe Kaggle și extrage-le în subfolderele de mai jos. Păstrează structura internă, fișierele de adnotări și împărțirile incluse în arhive. Git ignoră `raw_data/` și `dataset/`.
+Descarcă arhivele ZIP de pe Kaggle în subfolderele de mai jos. Scriptul de pregătire citește direct `raw_data/cardetection/cardetection.zip` și folosește împărțirile furnizate în arhivă. Pentru imagini identice prezente în mai multe seturi, păstrează prioritar testul, apoi validarea. Git ignoră `raw_data/` și `dataset/`.
 
 | Sursă | Folder local | Rol |
 | --- | --- | --- |
@@ -21,3 +21,16 @@ Descarcă arhivele de pe Kaggle și extrage-le în subfolderele de mai jos. Păs
 3. `scripts/train_model.py` pornește de la `yolov8n.pt`, folosește MPS dacă este disponibil și salvează detectorul în `models/best.pt`. Validăm localizarea și clasele pe imagini din setul de test și rulăm predicția pe un clip de drum, inclusiv pe cadre cu semne la margini și mai multe semne în același cadru.
 4. Verificăm acoperirea claselor. Pentru tipurile care lipsesc, avem nevoie de cadre în care acele semne sunt adnotate. Dacă folosim un detector generic pentru localizare, putem antrena separat un clasificator pe setul german și îl rulăm pe decupajele generate automat de detector. Folosim adnotările `road_sign` din setul de segmentare pentru a evalua localizarea separat de identificarea tipului.
 5. După ce detectorul funcționează pe video, continuăm pe `feature/live-dashboard` cu fluxul OpenCV și afișarea detecțiilor în `app.py`, apoi cu istoricul din `database/db_manager.py` în `traffic_logs.db`.
+
+## Rulare locală
+
+Din rădăcina proiectului, pregătește mediul și datele, apoi pornește antrenarea.
+
+```sh
+python3 -m venv venv
+venv/bin/python -m pip install -r requirements.txt
+venv/bin/python scripts/prepare_data.py
+venv/bin/python scripts/train_model.py --epochs 5 --imgsz 416 --batch 16
+```
+
+Setul pregătit are 3.439 de imagini pentru antrenare, 791 pentru validare și 638 pentru test. Arhiva are 4.969 de imagini, iar pregătirea exclude 101 fișiere identice cu imagini din alte seturi. După pregătirea datelor, poți rula din nou direct `train_model.py`. Scriptul salvează cel mai bun model al rulării în `models/best.pt`, iar Ultralytics păstrează rezultatele fiecărei rulări în `runs/detect/`.
