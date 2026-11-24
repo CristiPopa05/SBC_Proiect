@@ -1,6 +1,5 @@
 ultralytics
 opencv-python
-streamlit
-streamlit-webrtc
-pandas
+numpy
+tornado
 pyyaml

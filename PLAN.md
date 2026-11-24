@@ -2,7 +2,7 @@
 
 ## Obiectiv
 
-Camera MacBook-ului simulează o cameră orientată spre drum. Modelul analizează cadrul întreg, localizează unul sau mai multe indicatoare vizibile oriunde în imagine și afișează un chenar, tipul și scorul de încredere pentru fiecare detecție. Dashboard-ul Streamlit afișează fluxul video și istoricul salvat în SQLite.
+Camera MacBook-ului simulează o cameră orientată spre drum. YOLO analizează cadrul întreg. Bordul Sign Assist afișează în timp real pictograma și numele semnului cu scorul cel mai mare și păstrează ultimele patru semne în sesiunea curentă.
 
 ## Date
 
@@ -20,7 +20,8 @@ Descarcă arhivele ZIP de pe Kaggle în subfolderele de mai jos. Scriptul de pre
 2. `scripts/prepare_data.py` pregătește structura YOLO Detection sub `dataset/detection/`, cu `images/`, `labels/` și `data.yaml`. Păstrăm împărțirile de antrenare, validare și test furnizate de sursă, dacă există. [Formatul Ultralytics YOLO Detection](https://docs.ultralytics.com/datasets/detect/)
 3. `scripts/train_model.py` pornește de la `yolov8n.pt`, folosește MPS dacă este disponibil și salvează detectorul în `models/best.pt`. Validăm localizarea și clasele pe imagini din setul de test și rulăm predicția pe un clip de drum, inclusiv pe cadre cu semne la margini și mai multe semne în același cadru.
 4. Verificăm acoperirea claselor. Pentru tipurile care lipsesc, avem nevoie de cadre în care acele semne sunt adnotate. Dacă folosim un detector generic pentru localizare, putem antrena separat un clasificator pe setul german și îl rulăm pe decupajele generate automat de detector. Folosim adnotările `road_sign` din setul de segmentare pentru a evalua localizarea separat de identificarea tipului.
-5. Pe `feature/live-dashboard`, `app.py` preia camera prin WebRTC și afișează în Streamlit detecțiile modelului pe tot cadrul. Istoricul va fi gestionat de `database/db_manager.py` în `traffic_logs.db`.
+5. Interfața Lovable din `frontend/` preia camera prin browser și trimite cadre către `detection_api.py`. Detectorul local folosește `models/best.pt`, iar interfața afișează rezultatul prin `setDetectedSign`.
+6. Salvarea persistentă a istoricului în SQLite este o etapă planificată.
 
 ## Rulare locală
 
@@ -35,12 +36,22 @@ venv/bin/python scripts/train_model.py --epochs 5 --imgsz 416 --batch 16
 
 Setul pregătit are 3.439 de imagini pentru antrenare, 791 pentru validare și 638 pentru test. Arhiva are 4.969 de imagini, iar pregătirea exclude 101 fișiere identice cu imagini din alte seturi. După pregătirea datelor, poți rula din nou direct `train_model.py`. Scriptul salvează cel mai bun model al rulării în `models/best.pt`, iar Ultralytics păstrează rezultatele fiecărei rulări în `runs/detect/`.
 
-### Cameră live
+### Bordul din Lovable
 
-Cu `models/best.pt` pregătit și dependențele instalate, pornește aplicația local.
+Instalează dependențele Python și pregătește `models/best.pt` folosind pașii de mai sus. Modelul de bază acoperă indicatoarele STOP, limitele de viteză de la 10 la 120 km/h și semafoarele roșii și verzi. Butoanele demo afișează și alte categorii.
+
+Pornește detectorul din rădăcina proiectului.
 
 ```sh
-venv/bin/streamlit run app.py --server.address 127.0.0.1 --browser.gatherUsageStats false
+venv/bin/python detection_api.py
 ```
 
-Deschide [dashboard-ul](http://127.0.0.1:8501), apasă **Pornește camera** și acordă accesul în browser. Cadrele sunt procesate pe Mac. Poți regla pragul de încredere în timpul testului.
+În alt terminal, instalează dependențele conform lockfile-ului și pornește interfața.
+
+```sh
+cd frontend
+npx --yes --package=bun bun install --frozen-lockfile
+npm run dev -- --host 127.0.0.1 --port 5173 --strictPort
+```
+
+Deschide [Sign Assist](http://127.0.0.1:5173) și apasă **Pornește camera**.
