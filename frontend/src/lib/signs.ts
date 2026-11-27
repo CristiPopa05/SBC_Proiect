@@ -6,16 +6,22 @@ export type SignKind =
   | "yield"
   | "no_entry"
   | "no_overtaking"
+  | "parking"
   | "no_parking"
   | "priority"
+  | "oncoming_has_priority"
+  | "priority_over_oncoming"
   | "pedestrian"
   | "roundabout"
-  | "warning";
+  | "warning"
+  | "gtsrb";
 
 export interface TrafficSignData {
   kind: SignKind;
-  /** Speed limit in km/h, only for kind "speed". */
+  /** Speed in km/h or the original GTSRB class ID. */
   value?: number;
+  label?: string;
+  image?: string;
 }
 
 export function signLabel(sign: TrafficSignData): string {
@@ -34,16 +40,24 @@ export function signLabel(sign: TrafficSignData): string {
       return "Accesul interzis";
     case "no_overtaking":
       return "Depășirea interzisă";
+    case "parking":
+      return "Parcare";
     case "no_parking":
       return "Parcarea interzisă";
     case "priority":
       return "Drum cu prioritate";
+    case "oncoming_has_priority":
+      return "Prioritate pentru circulația din sens invers";
+    case "priority_over_oncoming":
+      return "Prioritate față de circulația din sens invers";
     case "pedestrian":
       return "Trecere pietoni";
     case "roundabout":
       return "Sens giratoriu";
     case "warning":
       return "Atenție";
+    case "gtsrb":
+      return sign.label ?? "Indicator rutier";
   }
 }
 
@@ -56,6 +70,7 @@ export const DEMO_SIGNS: TrafficSignData[] = [
   { kind: "yield" },
   { kind: "no_entry" },
   { kind: "no_overtaking" },
+  { kind: "parking" },
   { kind: "no_parking" },
   { kind: "priority" },
   { kind: "pedestrian" },

@@ -2,9 +2,13 @@ import { useEffect, useState, type RefObject } from "react";
 import { setDetectedSign } from "@/lib/sign-store";
 import type { TrafficSignData } from "@/lib/signs";
 
-const SAMPLE_INTERVAL_MS = 400;
+const SAMPLE_INTERVAL_MS = 250;
 const SIGN_HOLD_MS = 1_000;
 const MAX_FRAME_SIZE = 640;
+
+function sameSign(sign: TrafficSignData, other: TrafficSignData | null) {
+  return sign.kind === other?.kind && sign.value === other.value;
+}
 
 export function useCameraDetection(videoRef: RefObject<HTMLVideoElement | null>, playing: boolean) {
   const [offline, setOffline] = useState(false);
@@ -22,6 +26,8 @@ export function useCameraDetection(videoRef: RefObject<HTMLVideoElement | null>,
 
     let timer: number;
     let lastSeen = 0;
+    let previous: TrafficSignData | null = null;
+    let confirmed: TrafficSignData | null = null;
 
     async function sample() {
       let delay = SAMPLE_INTERVAL_MS;
@@ -49,14 +55,20 @@ export function useCameraDetection(videoRef: RefObject<HTMLVideoElement | null>,
         const { sign }: { sign: TrafficSignData | null } = await response.json();
         if (controller.signal.aborted) return;
         setOffline(false);
-        if (sign) {
-          lastSeen = performance.now();
+        const now = performance.now();
+        if (sign && (sameSign(sign, previous) || sameSign(sign, confirmed))) {
+          lastSeen = now;
+          confirmed = sign;
           setDetectedSign(sign);
-        } else if (performance.now() - lastSeen >= SIGN_HOLD_MS) {
+        } else if (now - lastSeen >= SIGN_HOLD_MS) {
+          confirmed = null;
           setDetectedSign(null);
         }
+        previous = sign;
       } catch {
         if (controller.signal.aborted) return;
+        previous = null;
+        confirmed = null;
         setOffline(true);
         setDetectedSign(null);
         delay = 1_000;

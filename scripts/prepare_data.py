@@ -1,6 +1,7 @@
 """Prepare the Kaggle Traffic Signs Detection archive for Ultralytics YOLO."""
 
 import argparse
+import re
 from hashlib import sha256
 from pathlib import Path, PurePosixPath
 from tempfile import TemporaryDirectory
@@ -11,9 +12,10 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_ROOT = PurePosixPath("car")
-# Prefer the supplied test split when the same image occurs in more than one split.
+# Keep related images in the first split they appear in, starting with test.
 SPLITS = {"test": "test", "valid": "val", "train": "train"}
 IMAGE_EXTENSIONS = {".jpeg", ".jpg", ".png", ".webp"}
+GTSRB_FRAME = re.compile(r"(\d{5}_\d{5})_\d{5}_png", re.IGNORECASE)
 
 
 def read_classes(archive):
@@ -59,6 +61,13 @@ def validate_labels(contents, source, class_count):
             raise ValueError(f"Invalid YOLO label in {source} on line {line_number}.")
 
 
+def source_group(stem):
+    original = stem.partition(".rf.")[0]
+    # GTSRB filenames encode the class, the sign's track and the frame number.
+    frame = GTSRB_FRAME.fullmatch(original)
+    return frame[1] if frame else original
+
+
 def prepare_dataset(archive_path, output):
     if output.exists():
         raise FileExistsError(f"{output} already exists. Use an unused --output directory.")
@@ -66,6 +75,7 @@ def prepare_dataset(archive_path, output):
     output.parent.mkdir(parents=True, exist_ok=True)
     counts = {}
     image_splits = {}
+    source_splits = {}
     excluded = 0
     with ZipFile(archive_path) as archive, TemporaryDirectory(
         prefix=".prepare-", dir=output.parent
@@ -93,10 +103,16 @@ def prepare_dataset(archive_path, output):
             counts[split] = 0
             for stem, image in images.items():
                 image_bytes = archive.read(image)
-                first_split = image_splits.setdefault(sha256(image_bytes).digest(), split)
-                if first_split != split:
+                digest = sha256(image_bytes).digest()
+                group = source_group(stem)
+                if (
+                    image_splits.get(digest, split) != split
+                    or source_splits.get(group, split) != split
+                ):
                     excluded += 1
                     continue
+                image_splits[digest] = split
+                source_splits[group] = split
                 label = labels[stem]
                 contents = archive.read(label)
                 validate_labels(contents, label.filename, len(names))
@@ -106,7 +122,7 @@ def prepare_dataset(archive_path, output):
                 counts[split] += 1
 
             if not counts[split]:
-                raise ValueError(f"{source} has no images after removing cross-split duplicates.")
+                raise ValueError(f"{source} has no images after grouping sources across splits.")
 
         (staged / "data.yaml").write_text(
             yaml.safe_dump(config, sort_keys=False, allow_unicode=True), encoding="utf-8"
@@ -132,7 +148,7 @@ def main():
 
     sizes = ", ".join(f"{split}={counts[split]}" for split in ("train", "val", "test"))
     print(f"Prepared {output} ({sizes}, {class_count} classes).")
-    print(f"Excluded {excluded} files also present in another split.")
+    print(f"Excluded {excluded} files with matching images or source groups in another split.")
 
 
 if __name__ == "__main__":

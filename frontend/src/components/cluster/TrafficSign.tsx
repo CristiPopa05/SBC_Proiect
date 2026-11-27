@@ -1,4 +1,4 @@
-import type { TrafficSignData } from "@/lib/signs";
+import { signLabel, type TrafficSignData } from "@/lib/signs";
 
 const C = {
   red: "var(--sign-red)",
@@ -10,7 +10,12 @@ const C = {
 
 export function TrafficSign({ sign, className }: { sign: TrafficSignData; className?: string }) {
   return (
-    <svg viewBox="0 0 100 100" className={className} role="img" aria-label={sign.kind}>
+    <svg
+      viewBox="0 0 100 100"
+      className={className}
+      role="img"
+      aria-label={sign.kind === "gtsrb" ? signLabel(sign) : sign.kind}
+    >
       <SignShape sign={sign} />
     </svg>
   );
@@ -18,6 +23,12 @@ export function TrafficSign({ sign, className }: { sign: TrafficSignData; classN
 
 function SignShape({ sign }: { sign: TrafficSignData }) {
   switch (sign.kind) {
+    case "gtsrb":
+      return sign.image ? (
+        <image href={sign.image} width="100" height="100" />
+      ) : (
+        <circle cx="50" cy="50" r="42" fill="none" stroke={C.white} strokeWidth="3" />
+      );
     case "speed": {
       const v = String(sign.value ?? "");
       return (
@@ -69,7 +80,12 @@ function SignShape({ sign }: { sign: TrafficSignData }) {
           <rect x="29" y="2" width="42" height="96" rx="9" fill={C.ink} stroke={C.white} />
           <circle cx="50" cy="23" r="11" fill={sign.kind === "red_light" ? C.red : "#414952"} />
           <circle cx="50" cy="50" r="11" fill="#414952" />
-          <circle cx="50" cy="77" r="11" fill={sign.kind === "green_light" ? "var(--eco)" : "#414952"} />
+          <circle
+            cx="50"
+            cy="77"
+            r="11"
+            fill={sign.kind === "green_light" ? "var(--eco)" : "#414952"}
+          />
         </>
       );
     case "yield":
@@ -95,6 +111,18 @@ function SignShape({ sign }: { sign: TrafficSignData }) {
           <Car x={52} fill={C.ink} />
         </>
       );
+    case "parking":
+      return (
+        <>
+          <rect x="4" y="4" width="92" height="92" rx="6" fill={C.blue} />
+          <path
+            d="M38 75 V26 H53 A15 15 0 0 1 53 56 H38"
+            fill="none"
+            stroke={C.white}
+            strokeWidth="10"
+          />
+        </>
+      );
     case "no_parking":
       return (
         <>
@@ -110,6 +138,24 @@ function SignShape({ sign }: { sign: TrafficSignData }) {
           <polygon points="50,18 82,50 50,82 18,50" fill={C.yellow} />
         </>
       );
+    case "oncoming_has_priority":
+    case "priority_over_oncoming": {
+      const hasPriority = sign.kind === "priority_over_oncoming";
+      return (
+        <>
+          {hasPriority ? (
+            <rect x="5" y="5" width="90" height="90" rx="6" fill={C.blue} />
+          ) : (
+            <>
+              <circle cx="50" cy="50" r="46" fill={C.red} />
+              <circle cx="50" cy="50" r="37" fill={C.white} />
+            </>
+          )}
+          <path d="M29 26 H40 V56 H47 L35 74 L23 56 H29 Z" fill={hasPriority ? C.red : C.ink} />
+          <path d="M60 74 H71 V44 H77 L65 26 L53 44 H60 Z" fill={hasPriority ? C.white : C.red} />
+        </>
+      );
+    }
     case "pedestrian":
       return (
         <>
@@ -132,12 +178,7 @@ function SignShape({ sign }: { sign: TrafficSignData }) {
           <circle cx="50" cy="50" r="46" fill={C.blue} />
           {[0, 120, 240].map((r) => (
             <g key={r} transform={`rotate(${r} 50 50)`}>
-              <path
-                d="M50 22 A28 28 0 0 1 74 36"
-                stroke={C.white}
-                strokeWidth="8"
-                fill="none"
-              />
+              <path d="M50 22 A28 28 0 0 1 74 36" stroke={C.white} strokeWidth="8" fill="none" />
               <polygon points="70,26 82,40 66,44" fill={C.white} />
             </g>
           ))}
